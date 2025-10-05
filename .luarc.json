@@ -1,0 +1,15 @@
+{
+  "workspace": {
+    "maxPreload": 2000,
+    "preloadFileSize": 1000
+  },
+  "runtime": {
+    "version": "LuaJIT"
+  },
+    "diagnostics.disable": [
+        "param-type-mismatch"
+    ],
+  "library": [ 
+    "api"
+  ]
+}
