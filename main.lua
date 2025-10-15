@@ -1,14 +1,6 @@
 math.randomseed(os.time())
--- local function drawfn_from_image(img_location)
---   local img = love.graphics.newImage(img_location)
---   local quad = love.graphics.newQuad(0, 0, img:getWidth(), img:getHeight(), img)
---   local function drawfn(pos)
---     love.graphics.draw(img, quad, pos[1], pos[2])
---   end
---   return drawfn
--- end
-local lick = require "lick"
-lick.reset=true
+-- local lick = require "lib/lick"
+-- lick.reset=true
 
 local function get_bitmap_from_img(filepath)
   local img = love.image.newImageData(filepath)
@@ -28,13 +20,33 @@ local function get_bitmap_from_img(filepath)
   return bitmapTable
 end
 
-local bitmap = {}
-local player = {}
-local comps = {} -- enemy entities
-local start_tile = {3, 6}
-local tilesize = 32
-local playerimg 
-local dir_to_offset = {
+
+local function new_guy()
+
+  local goodSpot = {1,1}
+  repeat
+    goodSpot[1]=math.random(1,16)
+    goodSpot[2]=math.random(1,16)
+  until bitmap[goodSpot[2]][goodSpot[1]] == 1
+  return {
+    pos={(goodSpot[1]-1) * tilesize, (goodSpot[2]-1) * tilesize},
+     quad = love.graphics.newQuad(0,0, tilesize, tilesize, playerimg),
+     current_tile = goodSpot,
+     direction = 4, -- 1: north; 2:e; 3:s; 4:w
+     nextDirection=4,
+     ammo = 1,
+     status = 1, -- 1: alive, 0: dead
+   }
+
+end
+function love.load()
+  _G.bitmap = {}
+_G.player = {}
+_G.comps = {} -- enemy entities
+_G.start_tile = {3, 6}
+_G.tilesize = 32
+_G.playerimg,mapimg
+_G.dir_to_offset = {
     {0,-1},
     {1,0},
     {0,1},
