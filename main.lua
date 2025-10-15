@@ -1,7 +1,46 @@
-math.randomseed(os.time())
--- local lick = require "lib/lick"
--- lick.reset=true
 
+  -- TODO RN
+-- fix visuals when wrapping
+-- when I dash into the enemy it dies
+-- make the enemy move randomly
+-- make the enemy able to dash
+-- make the enemy follow the player
+-- if the enemy dashes into me I die
+-- if the enemy and I are both dashing dur
+-- during collision:
+-- if I am dashing enemy dies
+-- if enemy is dashing I die
+-- if both are dashing check directions. if y axis is the same the one going left / right lives. vice-versa.
+-- if both dashing and both moving along 'kill axis', that means they must have dashed into each other resulting in PLAYER_1, loss by suicide
+-- WIN!
+-- LOSS BY DEATH!
+-- LOSS BY SUICIDE!
+
+--delay to dash activating, 3x some sound
+
+
+--import stuff and declare globals
+_G.love=require"love"
+_G.flux=require"lib/flux"
+_G.lick=require"lib/lick"
+_G.tilesize=32
+_G.directions = {{0,-1},{1,0},{0,1},{-1,0}}
+_G.walksound = love.audio.newSource("1.wav","stream")
+_G.dashsound = love.audio.newSource("dash.wav","stream")
+_G.baddashSound = love.audio.newSource("baddash.wav","stream")
+-- MY STUFF
+_G.entity = require"entity"
+
+-- AI generated function to convert hex to a decimal color table
+local function hexToRGBA(hexColor)
+  hexColor = hexColor:gsub("#", "") -- Remove the '#' if it exists
+  local r = tonumber("0x" .. hexColor:sub(1, 2))
+  local g = tonumber("0x" .. hexColor:sub(3, 4))
+  local b = tonumber("0x" .. hexColor:sub(5, 6))
+  return {r / 255, g / 255, b / 255}
+end
+
+--convert low res black and white image into bitmap for game map
 local function get_bitmap_from_img(filepath)
   local img = love.image.newImageData(filepath)
   local bitmapTable={}
@@ -20,138 +59,92 @@ local function get_bitmap_from_img(filepath)
   return bitmapTable
 end
 
+_G.bitmap = get_bitmap_from_img("mapBits.png")
+_G.stateGrid = bitmap
 
-local function new_guy()
+-- PLAYER ENEMY TABLES
+_G.player = entity({1,4},2,0,tilesize*3)
+_G.enemy = entity({16,4},4,tilesize*15,tilesize*3)
 
-  local goodSpot = {1,1}
-  repeat
-    goodSpot[1]=math.random(1,16)
-    goodSpot[2]=math.random(1,16)
-  until bitmap[goodSpot[2]][goodSpot[1]] == 1
-  return {
-    pos={(goodSpot[1]-1) * tilesize, (goodSpot[2]-1) * tilesize},
-     quad = love.graphics.newQuad(0,0, tilesize, tilesize, playerimg),
-     current_tile = goodSpot,
-     direction = 4, -- 1: north; 2:e; 3:s; 4:w
-     nextDirection=4,
-     ammo = 1,
-     status = 1, -- 1: alive, 0: dead
-   }
+--INDICATE PLAYER,ENEMY LOCATION ON GRID
+stateGrid[player.gridPos[2]][player.gridPos[1]] = 3
+stateGrid[enemy.gridPos[2]][enemy.gridPos[1]] = 4
 
-end
+-- LOVE2D FUNCTIONS ======================================================================
+-- LOVE2D FUNCTIONS ======================================================================
+-- LOVE2D FUNCTIONS ======================================================================
 function love.load()
-  _G.bitmap = {}
-_G.player = {}
-_G.comps = {} -- enemy entities
-_G.start_tile = {3, 6}
-_G.tilesize = 32
-_G.playerimg,mapimg
-_G.dir_to_offset = {
-    {0,-1},
-    {1,0},
-    {0,1},
-    {-1,0}
-  }
-
-function love.load()
-   love.window.setMode(512,512) -- set window size
-   bitmap = get_bitmap_from_img("mapBits.png") -- get bitmap
-   playerimg = love.graphics.newImage("player_sprite.png")
-   --print bitmap
-   for _, row in ipairs(bitmap) do
-    for _, pixel in ipairs(row) do
-      io.write(pixel)
+  --love settings
+  love.window.setMode(512,512,nil)
+  --print bitmap
+    for _, row in ipairs(bitmap) do
+      for _, pixel in ipairs(row) do
+        -- io.write(pixel)
+      end
+      -- print() -- Print a newline character after each row
     end
-    print() -- Print a newline character after each row
+    -- start a player and three enemies somewhere
+end
+
+function love.keypressed(key)
+  if key == "space" then
+    player:dash()
   end
-
-   -- start a player and three enemies somewhere
-   player = {
-     pos={(start_tile[1]-1) * tilesize, (start_tile[2]-1) * tilesize},
-     quad = love.graphics.newQuad(0,0, tilesize, tilesize, playerimg),
-     current_tile = {3, 6},
-     direction = 4, -- 1: north; 2:e; 3:s; 4:w
-     ammo = 1,
-     status = 1, -- 1: alive, 0: dead
-   }
-
-
-end
-
---requires bitmap global
-function px_to_tile(x,y)
-  local floored = {math.floor(x/tilesize), math.floor(y/tilesize)}
-  return bitmap[floored[2]+1][floored[1]+1]
-end
---requires global tilesize
-function move_validity(dx, dy)
-  if px_to_tile(dx,dy)==0 then return false end
-  if px_to_tile(dx+tilesize-1,dy)==0 then return false end
-  if px_to_tile(dx,dy+tilesize-1)==0 then return false end
-  if px_to_tile(dx+tilesize-1,dy+tilesize-1)==0 then return false end
-  return true
-end
-function validate_direction(direction)
-  -- check that we can still move and keep moving
-  local offset = dir_to_offset[direction]
-  local dx = player.pos[1]+offset[1]
-  local dy = player.pos[2]+offset[2]
-
-  -- wrap if neccecary
-  if dy == -1 then dy = love.graphics.getHeight()-tilesize end
-  if dy+tilesize > love.graphics.getHeight() then dy = 0 end
-  if dx == -1 then dx = love.graphics.getWidth() end
-  if dx > love.graphics.getWidth() then dx = 0 end
-
-  -- check new location is valid
-  if move_validity(dx, dy) then
-    return true
+  if key == "up" then
+    player.dir = 1
   end
-
+  if key == "right" then
+    player.dir = 2
+  end
+  if key == "down" then
+    player.dir = 3
+  end
+  if key == "left" then
+    player.dir = 4
+  end
 end
 
 
 function love.update(dt)
-  local nextDirection = player.direction
-  if love.keyboard.isDown('up') then
-      nextDirection = 1
-  elseif love.keyboard.isDown('right') then
-      nextDirection = 2
-  elseif love.keyboard.isDown('down') then
-      nextDirection = 3
-  elseif love.keyboard.isDown('left') then
-      nextDirection = 4
-  end
-  if validate_direction(nextDirection) then player.direction = nextDirection end
+  --update timers
+  player.lastDash = player.lastDash + dt
+  enemy.lastDash = enemy.lastDash + dt
+  player.lastMove = player.lastMove + dt
+  enemy.lastMove = enemy.lastMove + dt
+  flux.update(dt) -- for tweening
 
-  while not validate_direction(player.direction) do player.direction = math.random(1,4) end
-  if validate_direction(player.direction) then
-    local offset = dir_to_offset[player.direction]
-    local dx = player.pos[1]+offset[1]
-    local dy = player.pos[2]+offset[2]
-      -- wrap if neccecary
-    if dy ==-1 then dy = love.graphics.getHeight()-tilesize end
-    if dy+tilesize > love.graphics.getHeight() then dy = 0 end
-    if dx == -1 then dx = love.graphics.getWidth() end
-    if dx > love.graphics.getWidth() then dx = 0 end
+  -- move entities
+  player:move()
+  enemy:move()
 
-    player.pos = {dx, dy}
-  end
- 
 end
 
 function love.draw()
-
-
-  -- check would-be coordinated, with all modifications, then decide player location and draw
-  --draw level from bitmap 
-  for y, val in pairs(bitmap) do
-    for x, real_val in pairs(val) do
-      love.graphics.setColor(real_val, real_val, real_val)
-      love.graphics.rectangle("fill",(x-1)*tilesize, (y-1)*tilesize, tilesize,tilesize)
+  -- draw level from bitmap
+  -- draw level from bitmap
+    for y, val in pairs(bitmap) do
+      for x, real_val in pairs(val) do
+        if real_val == 1 or real_val == 0 then 
+          love.graphics.setColor(real_val, real_val, real_val)
+          love.graphics.rectangle("fill",(x-1)*tilesize, (y-1)*tilesize, tilesize,tilesize)
+        end
+        if real_val == 3 or real_val == 4 then
+        --   love.graphics.setColor(0,1,0)
+        love.graphics.setColor(1,1,1)
+        love.graphics.rectangle("fill",(x-1)*tilesize, (y-1)*tilesize, tilesize,tilesize)
+        end
+      end
     end
-  end
-  love.graphics.setColor(1,1,1) --clear the color 
-  love.graphics.draw(playerimg, player.quad, player.pos[1], player.pos[2])
-  print(player.pos[2])
+
+  --draw player
+  local hexxed = hexToRGBA("#81E01F")
+  love.graphics.setColor(hexxed[1],hexxed[2],hexxed[3])
+  local r = tilesize/2
+  love.graphics.circle("fill", player.screenPosX + r, player.screenPosY + r,r)
+
+  --draw enemy
+  local hexxed = hexToRGBA("#D9414C")
+  love.graphics.setColor(hexxed[1],hexxed[2],hexxed[3])
+  local r = tilesize/2
+  love.graphics.circle("fill", enemy.screenPosX + r, enemy.screenPosY + r,r)
 end
